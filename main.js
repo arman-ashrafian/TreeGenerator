@@ -1,186 +1,187 @@
-// Tree Generator
+var treeGenerator = function (p) {
+    // Initial setup
+    p.setup = function () {
+        let h = p.floor(p.windowHeight/1.25)
 
-var treeGenerator = new p5(function(s) {
-	// global
-	let tree = null
+        let canvas = p.createCanvas(p.windowWidth,h)
 
-	s.setup = function() {
-		let w = s.floor(s.windowWidth/1.25)
-		let h = s.floor(s.windowHeight/1.25)
+        // Paint a new tree each time the mouse is pressed inside the canvas
+        canvas.mousePressed(paintNewTree);
 
-		let canvas = s.createCanvas(w,h)
+        // paint the tree once
+        p.noLoop();
+        p.noStroke();
 
-		// draw new tree when canvas is clicked
-		canvas.mousePressed(create_and_paint_tree)
+        // Paint the tree
+        paintNewTree();
+    };
 
-		// no draw loop
-		s.noLoop()
+    /*
+     * Recursively build tree & paint onto canvas
+     */
+    function paintNewTree() {
+        var position = p.createVector(0.5 * p.width, 0.95 * p.height, 0);
+        var length = p.height / 7;
+        var diameter = length / 4.5;
+        var angle = -p.HALF_PI + (p.PI / 180) * p.random(-5, 5);
+        var color = p.color(130, 80, 20);
+        var level = 1;
+        var tree = new Branch(position, length, diameter, angle, color, level);
 
-		tree = create_tree();
-	}
+        // Paint the tree
+        p.background(225);
+        tree.paint();
+    }
 
-	s.draw = function() {
-		s.background(225)
-		tree.paint();
-	}
+    /*
+     * BRANCH CLASS
+     */
+    function Branch(position, length, diameter, angle, color, level) {
+        this.position = position;
+        this.length = length;
+        this.diameter = diameter;
+        this.angle = angle;
+        this.color = color;
+        this.level = level;
+        this.middleBranch = this.createSubBranch(true);
+        this.topBranch = this.createSubBranch(false);
+    }
 
-	// recursively builds tree
-	function create_tree() {
-		let pos = s.createVector(0.5 * s.width, 0.95 * s.height, 0)
-		let length = s.height / 7
-		let diameter = length / 4.5
-		let angle = s.radians(s.random(-5,5))
-		let angle_tot = 0
-		let color = s.color(130,80,20)
-		let level = 1
+    /*
+     * paint the branch and sub-branches onto canvas
+     */
+    Branch.prototype.paint = function () {
+        // Paint the middle branch
+        if (this.middleBranch) {
+            this.middleBranch.paint();
+        }
 
-		return new Branch(pos, length, diameter, angle, angle_tot, color, level)
-	}
+        // Paint the top branch
+        if (this.topBranch) {
+            this.topBranch.paint();
+        }
 
-	// creates new tree & draw onto canvas
-	function create_and_paint_tree() {
-		tree = create_tree()
-		s.redraw()
-	}
+        // Calculate the diameter at the branch top
+        var topDiameter = 0.65 * this.diameter;
 
-	// BRANCH CLASS
-	function Branch(pos, length, diameter, angle, angle_tot, color, level) {
-		this.pos = pos
-		this.length = length
-		this.diameter = diameter
-		this.angle = angle
-		this.angle_tot = angle_tot
-		this.color = color
-		this.level = level 
+        if (this.topBranch) {
+            topDiameter = this.topBranch.diameter;
+        }
 
-		// sub branches
-		this.mid_branch = this.create_sub_branch(true)
-		this.top_branch = this.create_sub_branch(false)
-	}
+        // Paint the branch
+        p.push();
+        p.fill(this.color);
+        p.translate(this.position.x, this.position.y);
+        p.rotate(this.angle);
+        p.beginShape();
+        p.vertex(0, -this.diameter / 2);
+        p.vertex(1.04 * this.length, -topDiameter / 2);
+        p.vertex(1.04 * this.length, topDiameter / 2);
+        p.vertex(0, this.diameter / 2, 0);
+        p.endShape();
+        p.pop();
+    };
 
-	Branch.prototype.paint = function() {
-		// calc diameter at top of branch
-		let top_diam = this.top_branch ? this.top_branch.diameter :
-										 0.65 * this.diameter;
+    /*
+     * Create a new sub branch
+     */
+    Branch.prototype.createSubBranch = function (isMiddleBranch) {
+        // Decide if the branch should be created
+        var createBranch = false;
+        var maxLevel = 20;
 
-		// transform coordinates
-		s.push() // start new drawing state
-		s.translate(this.pos.x, this.pos.y);
-		s.rotate(this.angle)
+        if (isMiddleBranch) {
+            if (this.level < 4 && p.random() < 0.7) {
+                createBranch = true;
+            } else if (this.level >= 4 && this.level < 10 && p.random() < 0.8) {
+                createBranch = true;
+            } else if (this.level >= 10 && this.level < maxLevel && p.random() < 0.85) {
+                createBranch = true;
+            }
+        } else {
+            if (this.level == 1) {
+                createBranch = true;
+            } else if (this.level < maxLevel && p.random() < 0.85) {
+                createBranch = true;
+            }
+        }
 
-		// paint middle branch
-		if(this.mid_branch) {
-			this.mid_branch.paint()
-		}
+        if (createBranch) {
+            // Calculate the starting position of the new branch
+            var newPosition = p.createVector(p.cos(this.angle), p.sin(this.angle), 0);
+            newPosition.mult(this.length);
 
-		// paint top branch
-		if(this.top_branch) {
-			this.top_branch.paint()
-		}
+            if (isMiddleBranch) {
+                newPosition.mult(p.random(0.5, 0.9));
+            }
 
-		// paint branch
-		s.fill(this.color)
-		s.noStroke()
+            newPosition.add(this.position);
 
-		s.beginShape()
-		s.vertex(-this.diameter / 2, 0)
-		s.vertex(-top_diam / 2, -1.04 * this.length);
-		s.vertex(top_diam / 2, -1.04 * this.length);
-		s.vertex(this.diameter / 2, 0)
-		s.endShape()
+            // Calculate the length of the new branch
+            var newLength = p.random(0.8, 0.9) * this.length;
 
-		s.pop()
-	}
+            // Calculate the diameter of the new branch
+            var newDiameter = this.diameter;
 
-	// create sub branch
-	Branch.prototype.create_sub_branch = function(is_mid_branch) {
-		const MAX_LEVEL = 18
-		let create_branch = this.create_decision(is_mid_branch)
+            if (this.level < 5) {
+                newDiameter *= p.random(0.8, 0.9);
+            } else {
+                newDiameter *= p.random(0.65, 0.75);
+            }
 
-		if(create_branch) {
-			// calc start pos
-			let new_pos = s.createVector(0, is_mid_branch ?
-			 -s.random(0.5, 0.9) * this.length : -this.length)
+            // Calculate the inclination angle of the new branch
+            var newAngle = this.angle;
 
-			// new branch length
-			let new_length = s.random(0.8, 0.9) * this.length
+            if (isMiddleBranch) {
+                var sign = (p.random() < 0.5) ? -1 : 1;
+                var deltaAngle = (p.PI / 180) * p.random(20, 40);
+                newAngle += sign * deltaAngle;
 
-			// new diameter derived from prev diameter
-			let new_diam = this.level < 5 ? 
-			s.random(0.8, 0.9) * this.diameter : s.random(0.65, 0.75) * this.diameter
+                if (this.level < 8) {
+                    // Don't let the branches fall too much
+                    if (newAngle < -p.PI) {
+                        newAngle += 2 * deltaAngle;
+                    } else if (newAngle > 0) {
+                        newAngle -= 2 * deltaAngle;
+                    }
+                }
+            } else {
+                newAngle += (p.PI / 180) * p.random(-15, 15);
 
-			// inclination angle of new branch
-			let new_angle, sign
+                if (this.level < 8) {
+                    // Don't let the branches fall too much
+                    if (newAngle < -p.PI) {
+                        newAngle += (p.PI / 180) * p.random(10, 30);
+                    } else if (newAngle > 0) {
+                        newAngle -= (p.PI / 180) * p.random(10, 30);
+                    }
+                }
+            }
 
-			if(is_mid_branch) {
-				sign = s.random() < 0.5 ? -1 : 1
-				new_angle = sign * s.radians(s.random(20, 40))
-			} else {
-				new_angle = s.radians(s.random(-15, 15))
-			}
+            // Calculate the color of the new branch
+            var newColor;
 
-			// dont let branches get too wild (too low)
-			if(this.level < 8 &&
-			 (s.abs(this.angle_tot + this.angle + new_angle) > 0.9 * s.HALF_PI)) {
-				new_angle *= -1
-			}
+            if (newDiameter > 1) {
+                var deltaColor = p.round(0, 20);
+                newColor = p.color(p.red(this.color) + deltaColor, p.green(this.color) + deltaColor, p.blue(this.color));
+            } else {
+                newColor = p.color(0.75 * p.red(this.color), p.green(this.color), 0.85 * p.blue(this.color));
+            }
 
-			// choose new color 
-			let new_color
+            // Calculate the new branch level
+            var newLevel = this.level + 1;
 
-			if(new_diam > 1) { 
-				let delta_color = s.random(0, 10)
-				new_color = s.color(s.red(this.color) + delta_color, 
-									s.green(this.color) + delta_color,
-									s.blue(this.color))
-			}
-			else {
-				new_color = s.color(s.red(this.color) * 0.75, 
-									s.green(this.color),
-									s.blue(this.color) * 0.85)
-			}
+            if (this.level < 6 && p.random() < 0.3) {
+                newLevel++;
+            }
 
-			let new_level = this.level++
+            // Return the new branch
+            return new Branch(newPosition, newLength, newDiameter, newAngle, newColor, newLevel);
+        } else {
+            // Return undefined
+            return;
+        }
+    };
+};
 
-			if(this.level < 6 && s.random() < 0.3) {
-				new_level++
-			}
-
-			// return new branch
-			return new Branch(new_pos, new_length, new_diam, new_angle, this.angle_tot, 
-							  new_color, new_level)
-		}
-		else { // create_branch == false
-			return undefined;
-		}
-
-
-	}
-
-	Branch.prototype.create_decision = function(is_mb) {
-		const MAX_LEVEL = 18
-		create_branch = false
-
-		if( is_mb ) {
-			if(this.level < 4 && s.random() < 0.7) {
-				create_branch = true
-			}
-			else if(this.level >= 4 && this.level < 10 && s.random() < 0.8) {
-				create_branch = true
-			}
-			else if(this.level >= 10 && this.level < MAX_LEVEL && s.random() < 0.85) {
-				create_branch = true
-			}
-		}
-		else {
-			if(this.level == 1) {
-				create_branch = true
-			}
-			else if(this.level < MAX_LEVEL && s.random() < 0.85) {
-				create_branch = true
-			}
-		}
-
-		return create_branch
-	}
-})
+var sketch = new p5(treeGenerator, 'sketch');
