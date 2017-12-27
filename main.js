@@ -1,12 +1,13 @@
 var treeGenerator = function (p) {
     // Initial setup
     p.setup = function () {
-        let h = p.floor(p.windowHeight/1.25)
+        let h = p.floor(p.windowHeight/1.25);
 
-        let canvas = p.createCanvas(p.windowWidth,h)
+        let canvas = p.createCanvas(p.windowWidth,h);
 
         // Paint a new tree each time the mouse is pressed inside the canvas
         canvas.mousePressed(paintNewTree);
+        canvas.touchStarted(paintNewTree);
 
         // paint the tree once
         p.noLoop();
